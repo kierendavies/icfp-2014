@@ -1,11 +1,14 @@
+module Parser (parseProgramme) where
 
+import Control.Applicative           hiding (many, (<|>))
 import Text.ParserCombinators.Parsec hiding (spaces)
-import Control.Applicative hiding ((<|>), many)
-
 import AST
 
-program :: Parser Expression
-program = spaces *> (fmap (ListExp . ((VarExp "do") :)) (expression `sepEndBy` spaces)) <* eof
+parseProgramme ∷ String → Either String Expression
+parseProgramme = parse programme ""
+
+programme :: Parser Expression
+programme = spaces *> (fmap (ListExp . ((VarExp "do") :)) (expression `sepEndBy` spaces)) <* eof
 
 expression :: Parser Expression
 expression = list <|> qlist <|> number <|> variable
