@@ -25,11 +25,19 @@ qlist :: Parser Expression
 qlist = char '\'' *> fmap QListExp listLit
 
 listLit :: Parser [Expression]
-listLit = between (char '(' *> spaces) (spaces <* char ')') (expression `sepEndBy` (many1 space)) <?> "list"
+listLit = between (char '(' *> spaces) (spaces <* char ')') (expression `sepEndBy` spaces1) <?> "list"
 
 variable :: Parser Expression
 variable = fmap VarExp (liftA2 (:) letter (many alphaNum)) <?> "variable"
 
 spaces :: Parser ()
-spaces = skipMany (space <?> "")
+spaces = skipMany space'
 
+spaces1 :: Parser ()
+spaces1 = skipMany1 space'
+
+space' :: Parser ()
+space' = ((space >> return ()) <|> comment) <?> ""
+
+comment :: Parser ()
+comment = char ';' >> many (noneOf "\n") >> newline >> return ()

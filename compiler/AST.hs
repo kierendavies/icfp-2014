@@ -4,6 +4,7 @@ module AST (
             PreProcMap
            ) where
 
+import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
 
@@ -11,12 +12,13 @@ type PreProcMap = M.Map String Expression
 
 data Expression = ListExp String [Expression]
                 | QListExp [Expression]
-                | IntExp Int
+                | IntExp Int32
                 | VarExp String
+                | VarHash Int32
                 | Closure [String] Expression
 
-data Instruction = LDC Int
-                 | LD Int Int
+data Instruction = LDC Int32
+                 | LD Int32 Int32
                  | ADD
                  | SUB
                  | MUL
@@ -28,23 +30,24 @@ data Instruction = LDC Int
                  | CONS
                  | CAR
                  | CDR
-                 | SEL Int Int
+                 | SEL Int32 Int32
                  | JOIN
-                 | LDF Int
-                 | AP Int
+                 | LDF Int32
+                 | AP Int32
                  | RTN
-                 | DUM Int
-                 | RAP Int
+                 | DUM Int32
+                 | RAP Int32
                  | STOP
-                 | TSEL Int Int
-                 | TAP Int
-                 | TRAP Int
-                 | ST Int Int
+                 | TSEL Int32 Int32
+                 | TAP Int32
+                 | TRAP Int32
+                 | ST Int32 Int32
                       deriving (Show,Eq,Ord)
 
 instance Show Expression where
-  show (ListExp _ xs) = "(" ++ (intercalate " " . map show $ xs) ++ ")"
+  show (ListExp x xs) = "(" ++ (intercalate " " $ x : map show xs) ++ ")"
   show (QListExp xs) = "'(" ++ (intercalate " " . map show $ xs) ++ ")"
-  show (IntExp n) = "#" ++ show n
+  show (IntExp n) = show n
   show (VarExp x) = "$" ++ x
+  show (VarHash x) = "$" ++ show x
   show (Closure args exp) = "(λ (" ++ intercalate " " args ++ ") (" ++ show exp ++ ")"
