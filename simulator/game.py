@@ -57,8 +57,8 @@ class Configuration:
     A Configuration holds the (x,y) coordinate of a character, along with its
     traveling direction.
 
-    The convention for positions, like a graph, is that (0,0) is the lower left corner, x increases
-    horizontally and y increases vertically.  Therefore, north is the direction of increasing y, or (0,1).
+    The convention for positions, like a graph, is that (0,0) is the upper left corner, x increases
+    horizontally and y decreases vertically.  Therefore, south is the direction of increasing y, or (0,1).
     """
 
     def __init__(self, pos, direction):
@@ -270,8 +270,8 @@ class Actions:
     A collection of static methods for manipulating move actions.
     """
     # Directions
-    _directions = {Directions.NORTH: (0, 1),
-                   Directions.SOUTH: (0, -1),
+    _directions = {Directions.NORTH: (0, -1),
+                   Directions.SOUTH: (0, 1),
                    Directions.EAST:  (1, 0),
                    Directions.WEST:  (-1, 0),
                    Directions.STOP:  (0, 0)}
@@ -294,9 +294,9 @@ class Actions:
 
     def vectorToDirection(vector):
         dx, dy = vector
-        if dy > 0:
-            return Directions.NORTH
         if dy < 0:
+            return Directions.NORTH
+        if dy > 0:
             return Directions.SOUTH
         if dx < 0:
             return Directions.WEST
@@ -329,6 +329,9 @@ class Actions:
 
     getPossibleActions = staticmethod(getPossibleActions)
 
+    """
+    This is legal WRT to walls, nothing more.
+    """
     def getLegalNeighbors(position, walls):
         x,y = position
         x_int, y_int = int(x + 0.5), int(y + 0.5)
@@ -439,15 +442,15 @@ class GameStateData:
         if hasFood:
             return '.'
         elif hasWall:
-            return '%'
+            return '#'
         else:
             return ' '
 
     def _pacStr( self, dir ):
         if dir == Directions.NORTH:
-            return 'v'
-        if dir == Directions.SOUTH:
             return '^'
+        if dir == Directions.SOUTH:
+            return 'v'
         if dir == Directions.WEST:
             return '>'
         return '<'
@@ -460,7 +463,7 @@ class GameStateData:
             return 'W'
         if dir == Directions.WEST:
             return '3'
-        return 'E'
+        return '='
 
     def initialize( self, layout, numGhostAgents ):
         """

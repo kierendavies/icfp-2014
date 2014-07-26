@@ -91,11 +91,11 @@ class Layout:
 
         The shape of the maze.  Each character
         represents a different type of object.
-         % - Wall
+         # - Wall
          . - Food
          o - Capsule
-         G - Ghost
-         P - Pacman
+         = - Ghost
+         \ - Pacman
         Other characters are ignored.
         """
         maxY = self.height - 1
@@ -107,15 +107,15 @@ class Layout:
         self.agentPositions = [ ( i == 0, pos) for i, pos in self.agentPositions]
 
     def processLayoutChar(self, x, y, layoutChar):
-        if layoutChar == '%':
+        if layoutChar == '#':
             self.walls[x][y] = True
         elif layoutChar == '.':
             self.food[x][y] = True
         elif layoutChar == 'o':
             self.capsules.append((x, y))
-        elif layoutChar == 'P':
+        elif layoutChar == '\\':
             self.agentPositions.append( (0, (x, y) ) )
-        elif layoutChar in ['G']:
+        elif layoutChar in ['=']:
             self.agentPositions.append( (1, (x, y) ) )
             self.numGhosts += 1
         elif layoutChar in  ['1', '2', '3', '4']:
