@@ -6,7 +6,7 @@ module AST (
 
 import Data.Int
 import Data.List
-import qualified Data.Map.Strict as M
+import qualified Data.Map as M
 
 type PreProcMap = M.Map String Expression
 
@@ -42,7 +42,7 @@ data Instruction = LDC Int32
                  | TAP Int32
                  | TRAP Int32
                  | ST Int32 Int32
-                      deriving (Show,Eq,Ord)
+                      deriving (Show,Eq,Ord,Read)
 
 instance Show Expression where
   show (ListExp x xs) = "(" ++ (intercalate " " $ x : map show xs) ++ ")"

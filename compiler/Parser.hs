@@ -2,33 +2,61 @@ module Parser (parseProgramme) where
 
 import Control.Applicative           hiding (many, (<|>))
 import Text.ParserCombinators.Parsec hiding (spaces)
+import Data.Int
+import Data.Char
+import Data.List
+import qualified Data.Map as M -- TODO: change to Data.Map.Strict
 import AST
 
-parseProgramme ∷ String → Either String Expression
-parseProgramme = parse programme ""
+parseProgramme :: String -> Either ParseError (Expression, PreProcMap)
+parseProgramme = parse fullProgramme ""
+
+fullProgramme :: Parser (Expression, PreProcMap)
+fullProgramme = do
+                map <- preprocessor
+                exp <- programme
+                return (exp, map)
 
 programme :: Parser Expression
-programme = spaces *> (fmap (ListExp . ((VarExp "do") :)) (expression `sepEndBy` spaces)) <* eof
+programme = spaces *> (fmap (ListExp "do") (expression `sepEndBy` spaces)) <* eof
+
+preprocessor :: Parser PreProcMap
+preprocessor = fmap (foldl' (flip $ uncurry M.insert) M.empty) $ many (preprocessorDef <* newline)
+
+preprocessorDef :: Parser (String, Expression)
+preprocessorDef = do
+                  char '#'
+                  v <- variableLit
+                  spaces
+                  char '='
+                  spaces
+                  e <- expression
+                  return (v,e)
 
 expression :: Parser Expression
 expression = list <|> qlist <|> number <|> variable
 
-numericLit :: Parser Int
+numericLit :: Parser Int32
 numericLit = (fmap (read) $ many1 (digit <?> "")) <?> "number"
 
 number = fmap IntExp numericLit
 
 list :: Parser Expression
-list = fmap ListExp listLit
+list = (do
+       char '(' *> spaces
+       x <- variableLit
+       spaces1
+       xs <- expression `sepEndBy` spaces1
+       spaces <* char ')'
+       return $ ListExp x xs) <?> "list"
 
 qlist :: Parser Expression
-qlist = char '\'' *> fmap QListExp listLit
-
-listLit :: Parser [Expression]
-listLit = between (char '(' *> spaces) (spaces <* char ')') (expression `sepEndBy` spaces1) <?> "list"
+qlist = char '\'' *> fmap QListExp ( between (char '(' *> spaces) (spaces <* char ')') (expression `sepEndBy` spaces1) <?> "qlist" )
 
 variable :: Parser Expression
-variable = fmap VarExp (liftA2 (:) letter (many alphaNum)) <?> "variable"
+variable = fmap VarExp variableLit
+
+variableLit = (liftA2 (:) letter (many alphaNum)) <?> "variable"
 
 spaces :: Parser ()
 spaces = skipMany space'
