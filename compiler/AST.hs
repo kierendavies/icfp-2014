@@ -14,7 +14,7 @@ data Expression = ListExp String [Expression]
                 | QListExp [Expression]
                 | IntExp Int32
                 | VarExp String
-                | VarHash Int32 Int32
+                | VarRef Int32 Int32
                 | Closure [String] Expression
 
 data Instruction = LDC Int32
@@ -49,5 +49,5 @@ instance Show Expression where
   show (QListExp xs) = "'(" ++ (intercalate " " . map show $ xs) ++ ")"
   show (IntExp n) = show n
   show (VarExp x) = "$" ++ x
-  show (VarHash d x) = "$(" ++ show d ++ ")" ++ show x
+  show (VarRef d x) = "$(" ++ show d ++ ")" ++ show x
   show (Closure args exp) = "(λ (" ++ intercalate " " args ++ ") (" ++ show exp ++ ")"
