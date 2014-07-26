@@ -17,6 +17,7 @@ module Assembler
     "jgt" => 3,
     "int" => 1,
     "hlt" => 0,
+    "def" => 2,
   }
   DIRECTIONS = ["up", "right", "down", "left"]
   VITALITY = ["standard", "fright", "invisible"]
@@ -39,13 +40,13 @@ module Assembler
         elsif match = /^(?<label>\w+):/.match(main)
           @label = match[:label]
           @type = :label
-        elsif match = /^(?<instruction>\w+)(\s+(?<args>(\w+|\[\w+\])(,\s*(\w+|\[\w+\])){0,2}))?/.match(main)
+        elsif match = /^(?<instruction>\w+)(\s+(?<args>(\w+|\[\w+\])((,|\s)\s*(\w+|\[\w+\])){0,2}))?/.match(main)
           unless INSTRUCTIONS.include?(match[:instruction])
             raise "invalid instruction: #{main}"
           end
           @instruction = match[:instruction]
           if match[:args]
-            @args = match[:args].split(/\s*,\s*/)
+            @args = match[:args].split(/\s*[,\s]\s*/)
           else
             @args = []
           end
@@ -61,7 +62,11 @@ module Assembler
               end
             end
           end
-          @type = :instruction
+          if @instruction == "def"
+            @type = :definition
+          else
+            @type = :instruction
+          end
         else
           raise "invalid syntax: #{main}"
         end
@@ -76,10 +81,29 @@ module Assembler
       @type == :label
     end
 
-    def sub_label(labels)
-      if instruction? && @instruction.start_with?("j")
-        if labels.include?(@args[0])
-          @args[0] = labels[@args[0]]
+    def definition
+      if @type == :definition
+        return args
+      else
+        nil
+      end
+    end
+
+    def substitute!(subs)
+      if instruction?
+        @args.each_with_index do |arg, i|
+          brackets = false
+          if match = /^\[(?<arg>.*)\]$/.match(arg.to_s)
+            arg = match[:arg]
+            brackets = true
+          end
+          if subs.include?(arg)
+            arg = subs[arg]
+            if brackets
+              arg = "[#{arg}]"
+            end
+            @args[i] = arg
+          end
         end
       end
     end
@@ -97,8 +121,9 @@ module Assembler
   def self.assemble(source)
     lines = []
     labels = {}
-    index = 0
+    definitions = {}
 
+    index = 0
     source.each_line do |l|
       line = Line.new(l)
       if line.instruction?
@@ -106,11 +131,14 @@ module Assembler
         index += 1
       elsif line.label?
         labels[line.label] = index
+      elsif d = line.definition
+        definitions[d[0]] = d[1]
       end
     end
 
     lines.each do |line|
-      line.sub_label(labels)
+      line.substitute!(labels)
+      line.substitute!(definitions)
     end
 
     return lines.join("\n") + "\n"
