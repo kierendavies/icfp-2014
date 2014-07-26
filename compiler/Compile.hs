@@ -24,14 +24,14 @@ variableRename w n (ListExp "lambda" (v@(QListExp es):body)) = ListExp "lambda" 
                                                                stuff = case all isVarExp es of
                                                                          True -> map (\(VarExp x) -> x) es
                                                                          _ -> error $ "Lambad expects variables but given "++show es
-                                                               m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [0..]
+                                                               m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [3,2..0]
                                                                w' = I.insert n' m' w
 
 variableRename w n (ListExp s es) = ListExp s $ map (variableRename w n) es
 variableRename w n (QListExp es) = QListExp $ map (variableRename w n) es
 variableRename w n (VarExp s) = case I.lookup n w of
                                   Just m -> case M.lookup s m of
-                                            Just (d,v) -> (on VarRef fromIntegral) d v
+                                            Just (d,v) -> (on VarRef fromIntegral) (n-d-1) v
                                             _ -> error $ "Attempt to use non-existent parameter "++show s
                                   _ -> error $ "Attempt to use non-existent parameter "++show s
 {-
@@ -102,15 +102,44 @@ emit (ListExp "cons" es) = do assertN 2 es
   ListExp "call" [VarHas d v] then this becomes:
   
   LD d v
-  AP 0
-  
-  If we had ListExp "call" l@[ListExp "lambda" _]
-  then this becomes:
-  
-  
-  <compiled l>
-  
+  CAR
 
+  DUM 1
+  ST 0 0
+  
+  LD 0 0
+  LDC 4
+  CEQ
+  TSELRel :End +1
+  LDC 0
+  
+  LD 0 0
+  LDC 3
+  CEQ
+  TSELRel :End +1
+  LDC 0
+
+  LD 0 0
+  LDC 2
+  CEQ
+  TSELRel :End +1
+  LDC 0
+
+  LD 0 0
+  LDC 1
+  CEQ
+  TSELRel :End +1
+  LDC 0
+
+  :End
+  LDC 1
+  SELRel +3 0
+  LDC 1
+  TSELRel +1 0
+  RTN
+  
+  LD d v
+  AP 4
 -}
 
 {-
@@ -121,3 +150,4 @@ emit (ListExp "cons" es) = do assertN 2 es
 -}
 
 Right p = parseProgramme "(lambda '(x y z) (progn (lambda '(x y) (add x y)) (lambda '(y x) (add y x z))))"
+q = variableRename I.empty 0 $ fst p
