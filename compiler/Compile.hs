@@ -1,5 +1,7 @@
 module Compile where
 
+import Parser
+
 import AST
 import Data.Int
 import Data.Maybe
@@ -15,15 +17,15 @@ isVarExp (VarExp _) = True
 isVarExp _ = False 
 
 variableRename :: I.IntMap (M.Map String (Int,Int)) -> Int -> Expression -> Expression
-variableRename w n (ListExp "lambda" ((QListExp es):body)) = ListExp "lambda" $ map (variableRename w' n') body
-                                                           where
-                                                             n' = succ n
-                                                             m = fromMaybe M.empty $ I.lookup n w
-                                                             stuff = case all isVarExp es of
-                                                                       True -> map (\(VarExp x) -> x) es
-                                                                       _ -> error $ "Lambad expects variables but given "++show es
-                                                             m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [0..]
-                                                             w' = I.insert n' m' w
+variableRename w n (ListExp "lambda" (v@(QListExp es):body)) = ListExp "lambda" . (v:) $ map (variableRename w' n') body
+                                                             where
+                                                               n' = succ n
+                                                               m = fromMaybe M.empty $ I.lookup n w
+                                                               stuff = case all isVarExp es of
+                                                                         True -> map (\(VarExp x) -> x) es
+                                                                         _ -> error $ "Lambad expects variables but given "++show es
+                                                               m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [0..]
+                                                               w' = I.insert n' m' w
 
 variableRename w n (ListExp s es) = ListExp s $ map (variableRename w n) es
 variableRename w n (QListExp es) = QListExp $ map (variableRename w n) es
@@ -117,3 +119,5 @@ emit (ListExp "cons" es) = do assertN 2 es
   becomes
   
 -}
+
+Right p = parseProgramme "(lambda '(x y z) (progn (lambda '(x y) (add x y)) (lambda '(y x) (add y x z))))"
