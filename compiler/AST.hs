@@ -1,9 +1,13 @@
 module AST (
             Expression(..),
-            Instruction (..)
+            Instruction (..),
+            PreProcMap
            ) where
 
 import Data.List
+import qualified Data.Map.Strict as M
+
+type PreProcMap = M.Map String Expression
 
 data Expression = ListExp [Expression]
                 | QListExp [Expression]
