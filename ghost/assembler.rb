@@ -53,6 +53,14 @@ module Assembler
             puts match.inspect
             raise "invalid number of arguments: #{main}"
           end
+          args.each_with_index do |arg, i|
+            arg = arg.tr("_", "")
+            [DIRECTIONS, VITALITY, BLOCKS, INTERRUPTS].each do |sublist|
+              if sublist.include?(arg)
+                @args[i] = sublist.find_index(arg)
+              end
+            end
+          end
           @type = :instruction
         else
           raise "invalid syntax: #{main}"
