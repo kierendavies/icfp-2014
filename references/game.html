@@ -87,7 +87,6 @@
 
   function step(){
     runStep()
-    updateState()
     updateStatus("Single step")
   }
 
@@ -231,22 +230,22 @@ hlt
           </div>
         <div id="buttons">
           <button id="load" type="button"> Load </button>
-          <button class="run" id="step" type="button"> Step </button>
-          <button class="run" id="runAll" type="button">Run</button>
+          <button class="run" id="step" type="button" disabled="disabled"> Step </button>
+          <button class="run" id="runAll" type="button" disabled="disabled"> Run  </button>
         </div>
         <section id="sim">
           <h2> Game </h2>
-          <canvas id="maze" width="460" height="440"></canvas>
+          <canvas id="maze" width="200" height="200"></canvas>
           <img src="./game_files/alltiles.png" id="alltiles">
-          <div id="status">Broken by user</div>
+          <div id="status"> No Program Loaded </div>
           <h5> State </h5>
           <div id="state"> 
-            Score: <span id="score">60</span> 
-            Lives: <span id="lives">2</span> 
-            Ticks: <span id="ticks">22921</span> 
+            Score: <span id="score">0</span> 
+            Lives: <span id="lives">0</span> 
+            Ticks: <span id="ticks">0</span> 
           </div>
           <h5> Trace output </h5>
-          <div id="trace"></div>
+          <div id="trace"> </div>
         </section>
         </section>
       </div>
