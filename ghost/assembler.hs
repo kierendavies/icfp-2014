@@ -24,11 +24,36 @@ main = do
     writeFile newFilename $ showProgram transformedProgram
 
 transformProgram :: Program -> Program
-transformProgram program = map (transformJump labelTable) strippedProgram
+transformProgram program = map (transformInstruction.transformJump labelTable) strippedProgram
     where labelTable = extractLabels program
           strippedProgram = filter (not.isLabel) program
           isLabel (Label _) = True
           isLabel _ = False
+
+transformInstruction (Instruction instr xs) = Instruction (transformInstr instr) (map transformArg xs)
+
+argTransformations = M.fromList [("UP", "0"),
+                                 ("RIGHT", "1"),
+                                 ("DOWN", "2"),
+                                 ("LEFT", "3"),
+
+                                 ("STANDARD", "0"),
+                                 ("FRIGHT", "1"),
+                                 ("INVISIBLE", "2"),
+
+                                 ("WALL", "0"),
+                                 ("EMPTY", "1"),
+                                 ("PILL", "2"),
+                                 ("POWER", "3"),
+                                 ("FRUIT", "4"),
+                                 ("LAMBDASTART", "5"),
+                                 ("GHOSTSTART", "6")]
+
+instrTransformations = M.fromList $ zip ["SETDIR","GETLAMBDAPOS","GETLAMBDA2POS","GETINDEX","GETGHOSTSTART","GETGHOSTPOS","GETVITDIR","GETBLOCK","TRACE"] $ map (("INT " ++).show) [1..]
+
+
+transformArg a = fromMaybe a $ M.lookup a argTransformations
+transformInstr i = fromMaybe i $ M.lookup i instrTransformations
 
 jumps = S.fromList ["jlt", "jeq", "jgt"]
 transformJump :: M.Map String Int -> Instruction -> Instruction
@@ -51,13 +76,12 @@ parseProgram :: String -> Program
 parseProgram str = catMaybes $ map parseLine $ filter ((0<).length) lins
                     where lins = lines str
 
-
 parseLine :: String -> Maybe Instruction
 parseLine [] = Nothing
 parseLine line
     | last line == ':' = Just $ Label line
     | otherwise        = if length spacedParts == 1
-                         then Just $ Instruction (map toLower line) []
+                         then Just $ Instruction line []
                          else Just $ Instruction (head spacedParts) $ removeEmpty commaedParts
         where spacedParts = splitOn " " line
               commaedParts = splitOn "," $ spacedParts !! 1
