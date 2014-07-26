@@ -9,7 +9,7 @@ import qualified Data.Map.Strict as M
 
 type PreProcMap = M.Map String Expression
 
-data Expression = ListExp [Expression]
+data Expression = ListExp String [Expression]
                 | QListExp [Expression]
                 | IntExp Int
                 | VarExp String
@@ -43,7 +43,7 @@ data Instruction = LDC Int
                       deriving (Show,Eq,Ord)
 
 instance Show Expression where
-  show (ListExp xs) = "(" ++ (intercalate " " . map show $ xs) ++ ")"
+  show (ListExp _ xs) = "(" ++ (intercalate " " . map show $ xs) ++ ")"
   show (QListExp xs) = "'(" ++ (intercalate " " . map show $ xs) ++ ")"
   show (IntExp n) = "#" ++ show n
   show (VarExp x) = "$" ++ x
