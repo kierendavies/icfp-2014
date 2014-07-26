@@ -94,20 +94,18 @@ module Assembler
     end
   end
 
-  def self.assemble(file)
+  def self.assemble(source)
     lines = []
     labels = {}
+    index = 0
 
-    File::open(file) do |f|
-      index = 0
-      f.readlines.each do |l|
-        line = Line.new(l)
-        if line.instruction?
-          lines << line
-          index += 1
-        elsif line.label?
-          labels[line.label] = index
-        end
+    source.each_line do |l|
+      line = Line.new(l)
+      if line.instruction?
+        lines << line
+        index += 1
+      elsif line.label?
+        labels[line.label] = index
       end
     end
 
@@ -115,8 +113,14 @@ module Assembler
       line.sub_label(labels)
     end
 
-    puts lines.join "\n"
+    return lines.join("\n") + "\n"
   end
 end
 
-Assembler.assemble(ARGV[0])
+out = ""
+File::open(ARGV[0]) do |f|
+  out = Assembler.assemble(f.read)
+end
+File::open(ARGV[0].sub(/.\w*$/, ".ghc"), "w") do |f|
+  f.write(out)
+end
