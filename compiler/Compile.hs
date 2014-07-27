@@ -99,8 +99,8 @@ emit (ListExp "cons" es) = do assertN 2 es
 {-
   (call foo) matches over closures and variables
   and dispatches accordingly. So if we have
-  ListExp "call" [VarHas d v] then this becomes:
-  
+  ListExp "call" [VarRef d v] then this becomes:
+
   LD d v
   CAR
 
