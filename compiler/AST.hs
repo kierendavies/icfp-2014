@@ -15,7 +15,7 @@ data Expression = ListExp String [Expression]
                 | IntExp Int32
                 | VarExp String
                 | VarRef Int32 Int32
-                | Closure [String] Expression
+              
 
 data Instruction = LDC Int32
                  | LD Int32 Int32
@@ -50,4 +50,3 @@ instance Show Expression where
   show (IntExp n) = show n
   show (VarExp x) = "$" ++ x
   show (VarRef d x) = "$(" ++ show d ++ ")" ++ show x
-  show (Closure args exp) = "(λ (" ++ intercalate " " args ++ ") (" ++ show exp ++ ")"

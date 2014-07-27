@@ -1,6 +1,6 @@
-module Compile where
+-- TODO: Preparse for let -> lambda, defun to lambda stuff, loops
 
-import Parser
+module Compile where
 
 import AST
 import Data.Int
@@ -16,6 +16,9 @@ isVarExp :: Expression -> Bool
 isVarExp (VarExp _) = True
 isVarExp _ = False 
 
+variableRename' :: Expression -> Expression
+variableRename' = variableRename I.empty 0
+
 variableRename :: I.IntMap (M.Map String (Int,Int)) -> Int -> Expression -> Expression
 variableRename w n (ListExp "lambda" (v@(QListExp es):body)) = ListExp "lambda" . (v:) $ map (variableRename w' n') body
                                                              where
@@ -24,16 +27,16 @@ variableRename w n (ListExp "lambda" (v@(QListExp es):body)) = ListExp "lambda" 
                                                                stuff = case all isVarExp es of
                                                                          True -> map (\(VarExp x) -> x) es
                                                                          _ -> error $ "Lambad expects variables but given "++show es
-                                                               m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [3,2..0]
+                                                               m' = foldl (\f (s,i) -> M.insert s (n,i) f) m $ zip stuff [0..]
                                                                w' = I.insert n' m' w
-
 variableRename w n (ListExp s es) = ListExp s $ map (variableRename w n) es
 variableRename w n (QListExp es) = QListExp $ map (variableRename w n) es
 variableRename w n (VarExp s) = case I.lookup n w of
                                   Just m -> case M.lookup s m of
-                                            Just (d,v) -> (on VarRef fromIntegral) (n-d-1) v
+                                            Just (d,v) -> (on VarRef fromIntegral) d v
                                             _ -> error $ "Attempt to use non-existent parameter "++show s
                                   _ -> error $ "Attempt to use non-existent parameter "++show s
+variableRename w n e = e
 {-
 variableRename :: Int32 -> Expression -> Expression
 variableRename n (ListExp s e) = ListExp s $ map (variableRename $ succ n) e
@@ -57,17 +60,49 @@ constUnroll _ e = e
 len :: [a] -> Int32
 len = fromIntegral . length
 
+concatSeq :: (Monad m) =>  [m [a]] -> m [a]
+concatSeq = liftM concat . sequence
+
 assertVarRef :: Expression -> Expression
 assertVarRef v@(VarRef _ _) = v
 assertVarRef e = error $ "Expected named variable but found "++show e
 
-assertN :: (Monad m) => Int -> [Expression] -> m [Expression]
-assertN n e = if length e < n
-                 then return e
+assertValidLambda :: Expression -> Expression
+assertValidLambda l@(ListExp "lambda" ((QListExp _):_:[])) = l
+assertValidLambda e = error $ "Expected valid lambda expression but found "++show e
+
+numArgsLambda :: Expression -> Int32
+numArgsLambda e = let ListExp "lambda" ((QListExp q):_) = assertValidLambda e
+                  in len q
+                  
+assertN :: Int -> [Expression] -> [Expression]
+assertN n e = if length e == n
+                 then e
                  else error $ "Expected " ++ show n ++ " arguments, but found " ++ show e
 
 emit :: (Monad m) => Expression -> m [Instruction]
 emit (IntExp i) = return [LDC i]
+emit (VarRef d v) = return [LD d v]
+emit (ListExp "+" args) = let (a:b:[]) = assertN 2 args 
+                          in concatSeq [concatSeq [emit b, emit a], return [ADD]]
+emit (ListExp "-" args) = let (a:b:[]) = assertN 2 args
+                          in concatSeq [concatSeq [emit b, emit a], return [SUB]]
+emit (ListExp "*" args) = let (a:b:[]) = assertN 2 args 
+                          in concatSeq [concatSeq [emit b, emit a], return [MUL]]
+emit (ListExp "/" args) = let (a:b:[]) = assertN 2 args
+                          in concatSeq [concatSeq [emit b, emit a], return [DIV]]
+emit (ListExp "<" args) = let (a:b:[]) = assertN 2 args
+                          in concatSeq [concatSeq [emit a, emit b], return [CGT]]
+emit (ListExp "<=" args) = let (a:b:[]) = assertN 2 args
+                           in concatSeq [concatSeq [emit a, emit b], return [CGTE]]
+emit (ListExp ">" args) = let (a:b:[]) = assertN 2 args
+                           in concatSeq [concatSeq [emit b, emit a], return [CGT]]
+emit (ListExp ">=" args) = let (a:b:[]) = assertN 2 args
+                           in concatSeq [concatSeq [emit b, emit a], return [CGTE]]                         
+emit (ListExp "=" args) = let (a:b:[]) = assertN 2 args
+                          in concatSeq [concatSeq [emit a, emit b], return [CEQ]]
+emit (ListExp "car" args) = return (assertN 0 args) >> return [CAR]
+emit (ListExp "cdr" args) = return (assertN 0 args) >> return [CDR]
 {- 
   (if pred true false) becomes:
   <compiled pred>
@@ -77,8 +112,7 @@ emit (IntExp i) = return [LDC i]
   tselR (len <compiled false> + 1) 0
   <compiled false>
 -}
-emit (ListExp "if" es) = do assertN 3 es
-                            let (p:t:f: []) = es
+emit (ListExp "if" es) = do let (p:t:f:[]) = assertN 3 es
                             p' <- emit p
                             t' <- emit t
                             f' <- emit f
@@ -93,61 +127,40 @@ emit (ListExp "if" es) = do assertN 3 es
   <compiled b>
   CONS
 -}
-emit (ListExp "cons" es) = do assertN 2 es
-                              let (a:b: []) = es
-                              liftM concat $ sequence [emit a, emit b, return [CONS]]
+emit (ListExp "cons" es) = do let (a:b:[]) = assertN 2 es
+                              concatSeq [emit b, emit a, return [CONS]]
 {-
   (call foo) matches over closures and variables
   and dispatches accordingly. So if we have
   ListExp "call" [VarRef d v] then this becomes:
-
+  <compiled reversed args>
   LD d v
-  CAR
+  AP (len args)
 
-  DUM 1
-  ST 0 0
-  
-  LD 0 0
-  LDC 4
-  CEQ
-  TSELRel :End +1
-  LDC 0
-  
-  LD 0 0
-  LDC 3
-  CEQ
-  TSELRel :End +1
-  LDC 0
-
-  LD 0 0
-  LDC 2
-  CEQ
-  TSELRel :End +1
-  LDC 0
-
-  LD 0 0
-  LDC 1
-  CEQ
-  TSELRel :End +1
-  LDC 0
-
-  :End
-  LDC 1
-  SELRel +3 0
-  LDC 1
-  TSELRel +1 0
-  RTN
-  
-  LD d v
-  AP 4
 -}
+emit (ListExp "call" (VarRef d v:args)) = concatSeq [concatSeq . map emit $ reverse args
+                                               ,return [LD d v ,AP $ len args]]
 
+emit (ListExp "call" (l@ (ListExp "lambda" _):args)) = do l' <- emit l
+                                                          concatSeq [concatSeq . map emit $ reverse args
+                                                               ,return [LDFRel 4
+                                                                       ,AP $ numArgsLambda l
+                                                                       ,LDC 0
+                                                                       ,TSELRel 0 . succ . len $ l']
+                                                               ,return l']
 {-
   (lambda '(vars) body) which we have as
   ListExp "lambda" [QListExp [VarHash d v *], e@(ListExp _ _)]
-  becomes
+  becomes:
   
--}
+  <compiled variableRename e>
 
-Right p = parseProgramme "(lambda '(x y z) (progn (lambda '(x y) (add x y)) (lambda '(y x) (add y x z))))"
-q = variableRename I.empty 0 $ fst p
+-}
+emit l@(ListExp "lambda" _) = let ListExp _ ((QListExp _):body:[]) = variableRename' $ assertValidLambda l
+                              in emit body
+
+
+foo = ListExp "+" [IntExp 3, IntExp 5]
+bar = ListExp "lambda" [QListExp [VarExp "x"],ListExp "if" [ListExp "<" [VarExp "x", IntExp 0], VarExp "x", ListExp "*" [IntExp (-1), VarExp "x"]]]
+wow = ListExp "if" [IntExp 1, IntExp 2, IntExp 3]
+wew = ListExp "cons" [IntExp 1, IntExp 0]
